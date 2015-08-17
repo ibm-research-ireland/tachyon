@@ -3,7 +3,7 @@
   <parent>
     <groupId>org.tachyonproject</groupId>
     <artifactId>tachyon-underfs</artifactId>
-    <version>0.7.0</version>
+    <version>0.7.1</version>
   </parent>
   <artifactId>tachyon-underfs-glusterfs</artifactId>
   <name>Tachyon Under File System - Gluster FS</name>
@@ -23,6 +23,11 @@
     <dependency>
       <groupId>org.apache.commons</groupId>
       <artifactId>commons-lang3</artifactId>
+    </dependency>
+    <dependency>
+      <groupId>org.gluster</groupId>
+      <artifactId>glusterfs-hadoop</artifactId>
+      <version>${glusterfs-hadoop.version}</version>
     </dependency>
     <dependency>
       <groupId>org.tachyonproject</groupId>
