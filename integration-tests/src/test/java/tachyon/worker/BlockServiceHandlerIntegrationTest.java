@@ -110,7 +110,7 @@ public class BlockServiceHandlerIntegrationTest {
 
     String filename = mWorkerServiceHandler.requestBlockLocation(USER_ID, blockId0, blockSize);
     createBlockFile(filename, blockSize);
-    mWorkerServiceHandler.cacheBlock(USER_ID, blockId0);
+    mWorkerServiceHandler.cacheBlock(USER_ID, blockId0, false);
 
     // The master should be immediately updated with the persisted block
     Assert.assertEquals(blockSize, mMasterInfo.getUsedBytes());
@@ -118,7 +118,7 @@ public class BlockServiceHandlerIntegrationTest {
     // Attempting to cache a non existent block should throw an exception
     Exception exception = null;
     try {
-      mWorkerServiceHandler.cacheBlock(USER_ID, blockId1);
+      mWorkerServiceHandler.cacheBlock(USER_ID, blockId1, false);
     } catch (TException e) {
       exception = e;
     }

@@ -85,6 +85,11 @@ public class MasterServiceHandler implements MasterService.Iface {
   }
 
   @Override
+  public boolean getForceCheckpoint() {
+    return mMasterInfo.getForceCheckpoint();
+  }
+
+  @Override
   public List<ClientWorkerInfo> getWorkersInfo() throws TException {
     return mMasterInfo.getWorkersInfo();
   }
@@ -210,6 +215,8 @@ public class MasterServiceHandler implements MasterService.Iface {
     }
     return ret;
   }
+
+
 
   @Override
   public int user_getRawTableId(String path) throws InvalidPathException, TException {

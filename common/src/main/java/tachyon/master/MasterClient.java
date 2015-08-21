@@ -279,6 +279,22 @@ public final class MasterClient implements Closeable {
     return null;
   }
 
+
+  public Boolean getForceCheckpoint() throws IOException {
+    while (!mIsClosed) {
+      connect();
+
+      try {
+        return mClient.getForceCheckpoint();
+      } catch (TException e) {
+        LOG.error(e.getMessage(), e);
+        mConnected = false;
+      }
+    
+    }
+    return null;
+  }
+
   private synchronized InetSocketAddress getMasterAddress() {
     if (!mUseZookeeper) {
       return mMasterAddress;

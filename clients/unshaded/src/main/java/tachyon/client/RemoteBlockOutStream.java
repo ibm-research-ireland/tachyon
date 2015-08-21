@@ -142,7 +142,8 @@ public class RemoteBlockOutStream extends BlockOutStream {
       }
       mCloser.close();
       if (mWrittenBytes > 0) {
-        mTachyonFS.cacheBlock(mBlockId);
+        //TODO fix this for async checkpointing
+        mTachyonFS.cacheBlock(mBlockId, false);
         mTachyonFS.getClientMetrics().incBlocksWrittenRemote(1);
       }
       mClosed = true;

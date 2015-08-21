@@ -161,7 +161,7 @@ public class BlockMetadataManagerTest {
     Assert.assertTrue(mMetaManager.hasTempBlockMeta(TEST_TEMP_BLOCK_ID));
     Assert.assertFalse(mMetaManager.hasBlockMeta(TEST_TEMP_BLOCK_ID));
     // Commit temp block
-    mMetaManager.commitTempBlockMeta(tempBlockMeta);
+    mMetaManager.commitTempBlockMeta(tempBlockMeta, false);
     Assert.assertFalse(mMetaManager.hasTempBlockMeta(TEST_TEMP_BLOCK_ID));
     Assert.assertTrue(mMetaManager.hasBlockMeta(TEST_TEMP_BLOCK_ID));
     // Get block
@@ -194,7 +194,7 @@ public class BlockMetadataManagerTest {
     TempBlockMeta tempBlockMeta =
         new TempBlockMeta(TEST_USER_ID, TEST_TEMP_BLOCK_ID, TEST_BLOCK_SIZE, dir);
     mMetaManager.addTempBlockMeta(tempBlockMeta);
-    mMetaManager.commitTempBlockMeta(tempBlockMeta);
+    mMetaManager.commitTempBlockMeta(tempBlockMeta, false);
     BlockMeta blockMeta = mMetaManager.getBlockMeta(TEST_TEMP_BLOCK_ID);
 
     // Move to anywhere

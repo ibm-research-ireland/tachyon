@@ -60,6 +60,8 @@ import tachyon.worker.WorkerClient;
  */
 public class TachyonFS extends AbstractTachyonFS {
 
+  private Boolean mForceCheckpoint = null;
+
   /**
    * Create a TachyonFS handler.
    *
@@ -245,8 +247,8 @@ public class TachyonFS extends AbstractTachyonFS {
    * @param blockId the block id
    * @throws IOException
    */
-  public synchronized void cacheBlock(long blockId) throws IOException {
-    mWorkerClient.cacheBlock(blockId);
+  public synchronized void cacheBlock(long blockId, boolean dirty) throws IOException {
+    mWorkerClient.cacheBlock(blockId, dirty);
   }
 
   /**
@@ -629,6 +631,15 @@ public class TachyonFS extends AbstractTachyonFS {
   public synchronized ClientFileInfo getFileStatus(int fileId, boolean useCachedMetadata)
       throws IOException {
     return getFileStatus(fileId, TachyonURI.EMPTY_URI, useCachedMetadata);
+  }
+
+
+  public synchronized boolean getForceCheckpoint() throws IOException {
+    if (mForceCheckpoint == null) {
+      mForceCheckpoint = mMasterClient.getForceCheckpoint();
+    }
+
+    return mForceCheckpoint == null ? false : mForceCheckpoint;
   }
 
   /**

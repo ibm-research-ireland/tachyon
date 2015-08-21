@@ -22,6 +22,7 @@ import java.io.File;
  */
 public class BlockMeta extends BlockMetaBase {
   private final long mBlockSize;
+  private volatile boolean mDirty = false;
 
   public BlockMeta(long blockId, long blockSize, StorageDir dir) {
     super(blockId, dir);
@@ -41,5 +42,13 @@ public class BlockMeta extends BlockMetaBase {
   @Override
   public String getPath() {
     return commitPath(mDir, mBlockId);
+  }
+
+  public boolean isDirty() {
+    return mDirty;
+  }
+
+  public void setDirty(boolean dirty) {
+    this.mDirty = dirty;
   }
 }

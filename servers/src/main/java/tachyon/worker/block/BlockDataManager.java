@@ -30,6 +30,7 @@ import tachyon.Constants;
 import tachyon.Users;
 import tachyon.conf.TachyonConf;
 import tachyon.master.MasterClient;
+import tachyon.thrift.ClientFileInfo;
 import tachyon.thrift.FailedToCheckpointException;
 import tachyon.thrift.FileDoesNotExistException;
 import tachyon.thrift.OutOfSpaceException;
@@ -37,6 +38,7 @@ import tachyon.underfs.UnderFileSystem;
 import tachyon.util.CommonUtils;
 import tachyon.util.NetworkUtils;
 import tachyon.util.ThreadFactoryUtils;
+import tachyon.master.BlockInfo;
 import tachyon.worker.WorkerSource;
 import tachyon.worker.block.io.BlockReader;
 import tachyon.worker.block.io.BlockWriter;
@@ -63,6 +65,10 @@ public class BlockDataManager {
   /** Metrics reporter that listens on block events and increases metrics counters*/
   private final BlockMetricsReporter mMetricsReporter;
 
+  private final CheckpointManager mCheckpointManager;
+
+  private final boolean mForceCheckpoint;
+
   // TODO: See if this can be removed from the class
   /** MasterClient, only used to inform the master of a new block in commitBlock */
   private MasterClient mMasterClient;
@@ -82,10 +88,12 @@ public class BlockDataManager {
    */
   public BlockDataManager(TachyonConf tachyonConf, WorkerSource workerSource) throws IOException {
     mHeartbeatReporter = new BlockHeartbeatReporter();
-    mBlockStore = new TieredBlockStore(tachyonConf);
+    mBlockStore = new TieredBlockStore(tachyonConf, this);
     mTachyonConf = tachyonConf;
     mWorkerSource = workerSource;
     mMetricsReporter = new BlockMetricsReporter(mWorkerSource);
+
+    mForceCheckpoint = mTachyonConf.getBoolean(Constants.WORKER_ASYNC_CHECKPOINT, false);
 
     mMasterClientExecutorService =
         Executors.newFixedThreadPool(1,
@@ -107,6 +115,16 @@ public class BlockDataManager {
     // Register the heartbeat reporter so it can record block store changes
     mBlockStore.registerBlockStoreEventListener(mHeartbeatReporter);
     mBlockStore.registerBlockStoreEventListener(mMetricsReporter);
+
+    final int numCheckpointThreads = 
+        mTachyonConf.getInt(Constants.WORKER_CHECKPOINT_THREADS, 1);
+    final int checkpointCapacityPerSec = 
+        mTachyonConf.getInt(Constants.WORKER_PER_THREAD_CHECKPOINT_CAP_MB_SEC,
+          Constants.DEFAULT_CHECKPOINT_CAP_MB_SEC);
+    mCheckpointManager = new CheckpointManager(this, mBlockStore, mUfs, 
+        numCheckpointThreads, checkpointCapacityPerSec);
+
+    mCheckpointManager.start();
   }
 
   /**
@@ -167,6 +185,24 @@ public class BlockDataManager {
     mMasterClient.addCheckpoint(mWorkerId, fileId, fileSize, dstPath);
   }
 
+
+  protected boolean asyncCheckpoint(long userId, int fileId) throws IOException {
+    final ClientFileInfo fileInfo = mMasterClient.getFileStatus(fileId,"");
+    if (fileInfo == null) {
+      throw new IOException("Impossible to async Checkpoint: no metadata found on " 
+          + "master for fileId " + fileId);
+    }
+
+    if (mForceCheckpoint) {
+      mCheckpointManager.scheduleForCheckpoint(userId, fileInfo);
+      return true;
+    }
+
+    return false;
+
+
+  }
+
   /**
    * Cleans up after users, to prevent zombie users. This method is called periodically.
    */
@@ -188,8 +224,10 @@ public class BlockDataManager {
    * @return true if successful, false otherwise
    * @throws IOException if the block to commit does not exist
    */
-  public void commitBlock(long userId, long blockId) throws IOException {
-    mBlockStore.commitBlock(userId, blockId);
+  public void commitBlock(long userId, long blockId, boolean dirty) throws IOException {
+    final boolean markAsDirty = mForceCheckpoint && dirty;
+    mBlockStore.commitBlock(userId, blockId, markAsDirty);
+
 
     // TODO: Reconsider how to do this without heavy locking
     // Block successfully committed, update master with new block metadata
@@ -248,6 +286,13 @@ public class BlockDataManager {
     BlockStoreLocation loc = BlockStoreLocation.anyDirInTier(tierAlias);
     TempBlockMeta createdBlock = mBlockStore.createBlockMeta(userId, blockId, loc, initialBytes);
     CommonUtils.createBlockPath(createdBlock.getPath());
+  }
+
+
+  public final boolean ensureCheckpointed(long blockId, long userId) {
+    // TODO: slightly hackish way to get the fileId from the blockId
+    final int fileId = BlockInfo.computeInodeId(blockId);
+    return mCheckpointManager.ensureCheckpointed(fileId, userId);
   }
 
   /**
@@ -427,6 +472,11 @@ public class BlockDataManager {
   public void stop() {
     mMasterClient.close();
     mMasterClientExecutorService.shutdown();
+    try {
+      mCheckpointManager.stop();
+    } catch (InterruptedException ex) {
+      LOG.warn("Interrupted while stopping the Checkpoint thread: {}", ex);
+    }
   }
 
   /**

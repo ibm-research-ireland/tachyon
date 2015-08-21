@@ -60,6 +60,8 @@ public class LocalBlockOutStream extends BlockOutStream {
   private boolean mCanWrite = false;
   private boolean mClosed = false;
 
+  private final boolean mDirty;
+
   /**
    * @param file the file the block belongs to
    * @param opType the OutStream's write type
@@ -67,10 +69,11 @@ public class LocalBlockOutStream extends BlockOutStream {
    * @param tachyonConf the TachyonConf instance for this file output stream.
    * @throws IOException
    */
-  LocalBlockOutStream(TachyonFile file, WriteType opType, int blockIndex, TachyonConf tachyonConf)
+  LocalBlockOutStream(TachyonFile file, WriteType opType, int blockIndex, TachyonConf tachyonConf,
+      boolean dirty)
       throws IOException {
     this(file, opType, blockIndex, tachyonConf.getBytes(Constants.USER_QUOTA_UNIT_BYTES,
-        8 * Constants.MB), tachyonConf);
+        8 * Constants.MB), tachyonConf, dirty);
   }
 
   /**
@@ -82,7 +85,7 @@ public class LocalBlockOutStream extends BlockOutStream {
    * @throws IOException
    */
   LocalBlockOutStream(TachyonFile file, WriteType opType, int blockIndex, long initialBytes,
-                      TachyonConf tachyonConf) throws IOException {
+                      TachyonConf tachyonConf, boolean dirty) throws IOException {
     super(file, opType, tachyonConf);
 
     // BlockOutStream.get() already checks for the local worker, but this verifies the local worker
@@ -113,6 +116,8 @@ public class LocalBlockOutStream extends BlockOutStream {
 
     mBufferBytes = mTachyonConf.getBytes(Constants.USER_FILE_BUFFER_BYTES, Constants.MB);
     mBuffer = ByteBuffer.allocate(Ints.checkedCast(mBufferBytes));
+
+    mDirty = opType.isAsync() && dirty;
   }
 
   private synchronized void appendCurrentBuffer(byte[] buf, int offset, int length)
@@ -160,7 +165,7 @@ public class LocalBlockOutStream extends BlockOutStream {
       flush();
       mCloser.close();
       if (mWrittenBytes > 0) {
-        mTachyonFS.cacheBlock(mBlockId);
+        mTachyonFS.cacheBlock(mBlockId, mDirty);
         mTachyonFS.getClientMetrics().incBlocksWrittenLocal(1);
       }
       mClosed = true;

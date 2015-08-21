@@ -131,10 +131,10 @@ public class FileOutStream extends OutStream {
     }
 
     if (canComplete) {
+      mTachyonFS.completeFile(mFile.mFileId);
       if (mWriteType.isAsync()) {
         mTachyonFS.asyncCheckpoint(mFile.mFileId);
       }
-      mTachyonFS.completeFile(mFile.mFileId);
     }
     mClosed = true;
   }
@@ -157,7 +157,9 @@ public class FileOutStream extends OutStream {
 
     if (mWriteType.isCache()) {
       int offset = (int) (mCachedBytes / mBlockCapacityByte);
-      mCurrentBlockOutStream = BlockOutStream.get(mFile, mWriteType, offset, mTachyonConf);
+      final boolean dirty = mWriteType.isAsync();
+      mCurrentBlockOutStream = BlockOutStream.get(mFile, mWriteType, offset, mTachyonConf, 
+          dirty);
     }
   }
 

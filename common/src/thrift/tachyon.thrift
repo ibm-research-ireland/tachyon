@@ -209,6 +209,8 @@ service MasterService {
   ClientFileInfo getFileStatus(1: i32 fileId, 2: string path)
     throws (1: InvalidPathException eI)
 
+  bool getForceCheckpoint()
+
   /**
    * Get block's ClientBlockInfo.
    */
@@ -276,7 +278,7 @@ service WorkerService {
     throws (1: FileDoesNotExistException eP, 2: SuspectedFileSizeException eS,
       3: FailedToCheckpointException eF, 4: BlockInfoException eB)
 
-  bool asyncCheckpoint(1: i32 fileId)
+  bool asyncCheckpoint(1: i64 userId, 2: i32 fileId)
     throws (1: TachyonException e)
 
   /**
@@ -284,7 +286,7 @@ service WorkerService {
    * folder to data folder, and update the space usage information related. then update the block
    * information to master. 
    */
-  void cacheBlock(1: i64 userId, 2: i64 blockId)
+  void cacheBlock(1: i64 userId, 2: i64 blockId, 3: bool dirty)
     throws (1: FileDoesNotExistException eP, 2: BlockInfoException eB)
 
   /**

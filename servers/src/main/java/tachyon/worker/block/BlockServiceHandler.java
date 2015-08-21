@@ -76,8 +76,12 @@ public class BlockServiceHandler implements WorkerService.Iface {
   }
 
   // TODO: Make this supported again
-  public boolean asyncCheckpoint(int fileId) throws TException {
-    return false;
+  public boolean asyncCheckpoint(long userId, int fileId) throws TException {
+    try {
+      return mWorker.asyncCheckpoint(userId, fileId);
+    } catch (IOException ioe) {
+      throw new TException(ioe);
+    }
   }
 
   /**
@@ -90,9 +94,9 @@ public class BlockServiceHandler implements WorkerService.Iface {
    * @throws TException if the block cannot be committed
    */
   // TODO: Reconsider this exception handling
-  public void cacheBlock(long userId, long blockId) throws TException {
+  public void cacheBlock(long userId, long blockId, boolean dirty) throws TException {
     try {
-      mWorker.commitBlock(userId, blockId);
+      mWorker.commitBlock(userId, blockId, dirty);
     } catch (IOException ioe) {
       throw new TException(ioe);
     }

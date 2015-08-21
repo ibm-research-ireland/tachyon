@@ -59,7 +59,7 @@ public class BlockOutStreamIntegrationTest {
     TachyonFS fs = TachyonFS.get(conf);
 
     TachyonFile file = fs.getFile(fs.createFile(new TachyonURI(filename)));
-    return BlockOutStream.get(file, WriteType.MUST_CACHE, 0, conf);
+    return BlockOutStream.get(file, WriteType.MUST_CACHE, 0, conf, false);
   }
 
   /**

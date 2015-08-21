@@ -102,6 +102,15 @@ public class BlockMetadataManagerView {
     }
   }
 
+  private boolean isBlockDirty(long blockId) {
+    try {
+      final BlockMeta bm = mMetadataManager.getBlockMeta(blockId);
+      return bm == null || bm.isDirty();
+    } catch (IOException e) {
+      return true;
+    }
+  }
+
   /**
    * Test if the block is evictable
    *
@@ -109,7 +118,7 @@ public class BlockMetadataManagerView {
    * @return boolean, true if the block can be evicted
    */
   public boolean isBlockEvictable(long blockId) {
-    return (!isBlockPinned(blockId) && !isBlockLocked(blockId));
+    return (!isBlockPinned(blockId) && !isBlockLocked(blockId) && !isBlockDirty(blockId));
   }
 
   /**

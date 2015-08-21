@@ -296,6 +296,7 @@ public class MasterInfo extends ImageWriter {
   private final TachyonConf mTachyonConf;
   private final String mUFSDataFolder;
 
+
   public MasterInfo(InetSocketAddress address, Journal journal, ExecutorService executorService,
       TachyonConf tachyonConf) throws IOException {
     mExecutorService = executorService;
@@ -1406,6 +1407,11 @@ public class MasterInfo extends ImageWriter {
       ret.add(inode.generateClientFileInfo(path.toString()));
     }
     return ret;
+  }
+
+
+  public boolean getForceCheckpoint() {
+    return mTachyonConf.getBoolean(Constants.WORKER_ASYNC_CHECKPOINT, false); 
   }
 
   /**

@@ -207,7 +207,8 @@ public class RemoteBlockInStream extends BlockInStream {
     // attempts that are invalidated later due to seek/skips
     if (bytesLeft > 0 && mBlockOutStream == null && mRecache) {
       try {
-        mBlockOutStream = BlockOutStream.get(mFile, WriteType.TRY_CACHE, mBlockIndex, mTachyonConf);
+        mBlockOutStream = BlockOutStream.get(mFile, WriteType.TRY_CACHE, mBlockIndex, 
+            mTachyonConf, false);
       } catch (IOException ioe) {
         LOG.warn("Recache attempt failed.", ioe);
         cancelRecache();

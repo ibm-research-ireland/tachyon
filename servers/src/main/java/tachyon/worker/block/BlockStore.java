@@ -110,7 +110,7 @@ interface BlockStore {
    * @param blockId the ID of a temp block
    * @throws IOException if the block can not be found or moved
    */
-  void commitBlock(long userId, long blockId) throws IOException;
+  void commitBlock(long userId, long blockId, boolean dirty) throws IOException;
 
   /**
    * Aborts a temporary block. The meta data of this block will not be added, its data will be

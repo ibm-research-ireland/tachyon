@@ -147,7 +147,8 @@ public class WorkerClient implements Closeable {
     mustConnect();
 
     try {
-      return mClient.asyncCheckpoint(fileId);
+      final long uid = mMasterClient.getUserId();
+      return mClient.asyncCheckpoint(uid, fileId);
     } catch (TachyonException e) {
       throw new IOException(e);
     } catch (TException e) {
@@ -162,11 +163,11 @@ public class WorkerClient implements Closeable {
    * @param blockId The id of the block
    * @throws IOException
    */
-  public synchronized void cacheBlock(long blockId) throws IOException {
+  public synchronized void cacheBlock(long blockId, boolean dirty) throws IOException {
     mustConnect();
 
     try {
-      mClient.cacheBlock(mMasterClient.getUserId(), blockId);
+      mClient.cacheBlock(mMasterClient.getUserId(), blockId, dirty);
     } catch (FileDoesNotExistException e) {
       throw new IOException(e);
     } catch (BlockInfoException e) {

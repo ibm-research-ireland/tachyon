@@ -35,7 +35,6 @@ import com.google.common.io.Files;
 import tachyon.Constants;
 import tachyon.Pair;
 import tachyon.conf.TachyonConf;
-import tachyon.thrift.InvalidPathException;
 import tachyon.util.CommonUtils;
 import tachyon.worker.block.allocator.Allocator;
 import tachyon.worker.block.allocator.AllocatorFactory;
@@ -73,6 +72,8 @@ public class TieredBlockStore implements BlockStore {
   private final BlockLockManager mLockManager;
   private final Allocator mAllocator;
   private final Evictor mEvictor;
+  private final BlockDataManager mBlockDataManager;
+  private final boolean mForceCheckpoint;
   private List<BlockStoreEventListener> mBlockStoreEventListeners =
       new ArrayList<BlockStoreEventListener>();
   /** A set of pinned inodes fetched from the master */
@@ -87,7 +88,7 @@ public class TieredBlockStore implements BlockStore {
    */
   private final ReentrantReadWriteLock mEvictionLock = new ReentrantReadWriteLock();
 
-  public TieredBlockStore(TachyonConf tachyonConf) throws IOException {
+  public TieredBlockStore(TachyonConf tachyonConf, BlockDataManager bdm) throws IOException {
     mTachyonConf = Preconditions.checkNotNull(tachyonConf);
     mMetaManager = BlockMetadataManager.newBlockMetadataManager(mTachyonConf);
     mLockManager = new BlockLockManager(mMetaManager);
@@ -109,6 +110,8 @@ public class TieredBlockStore implements BlockStore {
     if (mEvictor instanceof BlockStoreEventListener) {
       registerBlockStoreEventListener((BlockStoreEventListener) mEvictor);
     }
+    mForceCheckpoint = mTachyonConf.getBoolean(Constants.WORKER_ASYNC_CHECKPOINT, false);
+    mBlockDataManager = bdm;
   }
 
   @Override
@@ -167,11 +170,13 @@ public class TieredBlockStore implements BlockStore {
   }
 
   @Override
-  public void commitBlock(long userId, long blockId) throws IOException {
+  public void commitBlock(long userId, long blockId, boolean dirty) throws IOException {
+    LOG.debug("Committing block: bid {}, fid {}, dirty {}, uid {}",
+        blockId, blockId >> 30, dirty, userId);
     mEvictionLock.readLock().lock();
     try {
       TempBlockMeta tempBlockMeta = mMetaManager.getTempBlockMeta(blockId);
-      commitBlockNoLock(userId, blockId, tempBlockMeta);
+      commitBlockNoLock(userId, blockId, tempBlockMeta, dirty);
       // TODO: move listeners outside of the lock.
       synchronized (mBlockStoreEventListeners) {
         for (BlockStoreEventListener listener : mBlockStoreEventListeners) {
@@ -362,7 +367,8 @@ public class TieredBlockStore implements BlockStore {
   }
 
   // Commit a temp block. This method requires eviction lock in READ mode.
-  private void commitBlockNoLock(long userId, long blockId, TempBlockMeta tempBlockMeta)
+  private void commitBlockNoLock(long userId, long blockId, TempBlockMeta tempBlockMeta,
+      boolean dirty)
       throws IOException {
     // TODO: share the condition checking among commitBlockNoLock and abortBlockNoLock in a helper
     // function.
@@ -382,7 +388,7 @@ public class TieredBlockStore implements BlockStore {
       throw new IOException("Failed to commit temp block " + blockId + ": cannot rename from "
           + sourcePath + " to " + destPath);
     }
-    mMetaManager.commitTempBlockMeta(tempBlockMeta);
+    mMetaManager.commitTempBlockMeta(tempBlockMeta, dirty);
   }
 
   // Abort a temp block. This method requires eviction lock in READ mode.
@@ -462,6 +468,11 @@ public class TieredBlockStore implements BlockStore {
 
     // 1. remove blocks to make room.
     for (long blockId : plan.toEvict()) {
+      // ensure no uncheckpointed data is removed
+      if (mForceCheckpoint) {
+        mBlockDataManager.ensureCheckpointed(blockId, userId);
+      }
+      LOG.debug("Evicting block {} demanded by user {}", blockId, userId);
       long lockId = mLockManager.lockBlock(userId, blockId, BlockLockType.WRITE);
       try {
         removeBlockNoLock(userId, blockId);

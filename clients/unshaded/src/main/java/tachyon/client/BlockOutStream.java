@@ -41,9 +41,10 @@ public abstract class BlockOutStream extends OutStream {
    * @throws IOException
    */
   public static BlockOutStream get(TachyonFile tachyonFile, WriteType opType, int blockIndex,
-      TachyonConf tachyonConf) throws IOException {
+      TachyonConf tachyonConf, boolean dirty) throws IOException {
     return get(tachyonFile, opType, blockIndex,
-        tachyonConf.getBytes(Constants.USER_QUOTA_UNIT_BYTES, 8 * Constants.MB), tachyonConf);
+        tachyonConf.getBytes(Constants.USER_QUOTA_UNIT_BYTES, 8 * Constants.MB), tachyonConf, 
+          dirty);
   }
 
   /**
@@ -57,16 +58,23 @@ public abstract class BlockOutStream extends OutStream {
    * @throws IOException
    */
   public static BlockOutStream get(TachyonFile tachyonFile, WriteType opType, int blockIndex,
-      long initialBytes, TachyonConf tachyonConf) throws IOException {
+      long initialBytes, TachyonConf tachyonConf, boolean dirty) throws IOException {
 
     if (tachyonFile.mTachyonFS.hasLocalWorker()
         && tachyonConf.getBoolean(Constants.USER_ENABLE_LOCAL_WRITE,
             Constants.DEFAULT_USER_ENABLE_LOCAL_WRITE)) {
       LOG.info("Writing with local stream. tachyonFile: " + tachyonFile + ", blockIndex: "
           + blockIndex + ", opType: " + opType);
-      return new LocalBlockOutStream(tachyonFile, opType, blockIndex, initialBytes, tachyonConf);
+      return new LocalBlockOutStream(tachyonFile, opType, blockIndex, initialBytes, tachyonConf, 
+          dirty);
     }
 
+    if (opType.isAsync() && tachyonFile.mTachyonFS.getForceCheckpoint()) {
+      throw new IOException("The machine has no local worker (remote workers not supported for "
+          + "async writes).");
+    }
+    // TODO: Restudy how this will work with async cgheckpoints. i.e., when the assumptions that
+    // all the written blocks belonging to the same file are on the same worker
     LOG.info("Writing with remote stream. tachyonFile: " + tachyonFile + ", blockIndex: "
         + blockIndex + ", opType: " + opType);
     return new RemoteBlockOutStream(tachyonFile, opType, blockIndex, initialBytes, tachyonConf);

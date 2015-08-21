@@ -98,8 +98,10 @@ public class BlockMetadataManager {
    * @param tempBlockMeta the meta data of the temp block to commit
    * @throws IOException
    */
-  public synchronized void commitTempBlockMeta(TempBlockMeta tempBlockMeta) throws IOException {
+  public synchronized void commitTempBlockMeta(TempBlockMeta tempBlockMeta, 
+      boolean dirty) throws IOException {
     BlockMeta block = new BlockMeta(Preconditions.checkNotNull(tempBlockMeta));
+    block.setDirty(dirty);
     StorageDir dir = tempBlockMeta.getParentDir();
     dir.removeTempBlockMeta(tempBlockMeta);
     dir.addBlockMeta(block);

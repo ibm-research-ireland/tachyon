@@ -178,7 +178,7 @@ class EvictorTestUtils {
 
     // commit block
     Files.move(tempFile, new File(block.getCommitPath()));
-    meta.commitTempBlockMeta(block);
+    meta.commitTempBlockMeta(block, false);
 
     // update evictor
     if (evictor instanceof BlockStoreEventListener) {
