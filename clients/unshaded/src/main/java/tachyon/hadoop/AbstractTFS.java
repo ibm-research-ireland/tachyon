@@ -38,13 +38,14 @@ import tachyon.PrefixList;
 import tachyon.TachyonURI;
 import tachyon.client.TachyonFile;
 import tachyon.client.TachyonFS;
+import tachyon.client.ReadType;
 import tachyon.client.WriteType;
+import tachyon.client.UfsUtils;
 import tachyon.conf.TachyonConf;
 import tachyon.thrift.ClientBlockInfo;
 import tachyon.thrift.ClientDependencyInfo;
 import tachyon.thrift.ClientFileInfo;
 import tachyon.thrift.NetAddress;
-import tachyon.client.UfsUtils;
 import tachyon.util.CommonUtils;
 import tachyon.util.UnderFileSystemUtils;
 
@@ -467,8 +468,9 @@ abstract class AbstractTFS extends FileSystem {
     fromHdfsToTachyon(path);
     int fileId = mTFS.getFileId(path);
 
+    final ReadType rt = getReadType();
     return new FSDataInputStream(new HdfsFileInputStream(mTFS, fileId, Utils.getHDFSPath(path,
-        mUnderFSAddress), getConf(), bufferSize, mTachyonConf));
+        mUnderFSAddress), getConf(), bufferSize, mTachyonConf, rt));
   }
 
   @Override
@@ -516,5 +518,10 @@ abstract class AbstractTFS extends FileSystem {
 
   private WriteType getWriteType() {
     return mTachyonConf.getEnum(Constants.USER_DEFAULT_WRITE_TYPE, WriteType.CACHE_THROUGH);
+  }
+
+  private ReadType getReadType() {
+    return mTachyonConf.getEnum(Constants.USER_DEFAULT_READ_TYPE, ReadType.CACHE);
+
   }
 }

@@ -61,8 +61,14 @@ public class HdfsFileInputStream extends InputStream implements Seekable, Positi
 
   public HdfsFileInputStream(TachyonFS tfs, int fileId, Path hdfsPath, Configuration conf,
       int bufferSize, TachyonConf tachyonConf) throws IOException {
+    this(tfs, fileId, hdfsPath, conf, bufferSize, tachyonConf, ReadType.CACHE);
+  }
+
+  public HdfsFileInputStream(TachyonFS tfs, int fileId, Path hdfsPath, Configuration conf,
+                             int bufferSize, TachyonConf tachyonConf,
+                             ReadType type) throws IOException {
     LOG.debug("PartitionInputStreamHdfs({}, {}, {}, {}, {})", tfs, fileId, hdfsPath, conf,
-        bufferSize);
+            bufferSize);
     mTachyonConf = tachyonConf;
     long bufferBytes = mTachyonConf.getBytes(Constants.USER_FILE_BUFFER_BYTES, 0);
     mBuffer = new byte[Ints.checkedCast(bufferBytes) * 4];
@@ -75,10 +81,10 @@ public class HdfsFileInputStream extends InputStream implements Seekable, Positi
     mTachyonFile = mTFS.getFile(mFileId);
     if (mTachyonFile == null) {
       throw new FileNotFoundException("File " + hdfsPath + " with FID " + fileId
-          + " is not found.");
+              + " is not found.");
     }
     mTachyonFile.setUFSConf(mHadoopConf);
-    mTachyonFileInputStream = mTachyonFile.getInStream(ReadType.CACHE);
+    mTachyonFileInputStream = mTachyonFile.getInStream(type);
   }
 
   /**
